@@ -1,0 +1,7 @@
+[package]
+edition = "2021"
+name = "text_erase"
+version = "0.1.0"
+
+[dependencies]
+image = "0.25"
