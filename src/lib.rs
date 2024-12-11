@@ -5,8 +5,11 @@ mod tests {
     use image::{GenericImageView, ImageBuffer, ImageReader};
     use plotters::{
         chart::ChartBuilder,
-        prelude::{IntoDrawingArea, IntoLinspace, PathElement, Rectangle, SVGBackend},
-        series::{LineSeries, SurfaceSeries},
+        prelude::{
+            BitMapBackend, IntoDrawingArea, IntoLinspace, IntoSegmentedCoord, PathElement,
+            Rectangle, SVGBackend,
+        },
+        series::{Histogram, LineSeries, SurfaceSeries},
         style::{Color, BLACK, BLUE, GREEN, RED, WHITE},
     };
 
@@ -177,6 +180,89 @@ mod tests {
         // To avoid the IO failure being ignored silently, we manually call the present function
         area.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
         log::info!("Result has been saved");
+        Ok(())
+    }
+
+    #[test]
+    fn image_rgb_histogram() -> anyhow::Result<()> {
+        let _ = tracing_subscriber::fmt().with_line_number(true).try_init();
+        let img = ImageReader::open("./data/scan_raw.jpeg")?.decode()?;
+        let mut r_vec = Vec::new();
+        let mut g_vec = Vec::new();
+        let mut b_vec = Vec::new();
+        let (width, height) = img.dimensions();
+        for x in 0..width {
+            for y in 0..height {
+                let rgba = img.get_pixel(x, y);
+                r_vec.push(rgba.0[0] as u32);
+                g_vec.push(rgba.0[1] as u32);
+                b_vec.push(rgba.0[2] as u32);
+            }
+        }
+
+        let root = BitMapBackend::new("./data/histogram.png", (1024, 768)).into_drawing_area();
+        root.fill(&WHITE)?;
+        let mut chart = ChartBuilder::on(&root)
+            .x_label_area_size(35)
+            .y_label_area_size(40)
+            .margin(5)
+            .caption("Histogram Test", ("sans-serif", 50.0))
+            .build_cartesian_2d((0u32..255u32).into_segmented(), 0u32..100_000u32)?;
+
+        chart
+            .configure_mesh()
+            .disable_x_mesh()
+            .bold_line_style(WHITE.mix(0.3))
+            .y_desc("Count")
+            .x_desc("RGB")
+            .axis_desc_style(("sans-serif", 15))
+            .draw()?;
+
+        chart.draw_series(
+            Histogram::vertical(&chart)
+                .style(RED.mix(0.1).filled())
+                .data(r_vec.into_iter().map(|x: u32| (x, 1))),
+        )?;
+
+        chart.draw_series(
+            Histogram::vertical(&chart)
+                .style(GREEN.mix(0.1).filled())
+                .data(g_vec.into_iter().map(|x: u32| (x, 1))),
+        )?;
+
+        chart.draw_series(
+            Histogram::vertical(&chart)
+                .style(BLUE.mix(0.1).filled())
+                .data(b_vec.into_iter().map(|x: u32| (x, 1))),
+        )?;
+
+        root.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
+        log::info!("Result has been saved");
+        Ok(())
+    }
+
+    #[test]
+    fn fix_image_pixel_one_by_one() -> anyhow::Result<()> {
+        let _ = tracing_subscriber::fmt().with_line_number(true).try_init();
+        let img = ImageReader::open("./data/scan_raw.jpeg")?.decode()?;
+        let (width, height) = img.dimensions();
+        let mut imgbuf = ImageBuffer::new(width, height);
+
+        let (start, end) = (125, 255);
+
+        for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+            let mut rgba = img.get_pixel(width - x - 1, height - y - 1);
+            if (rgba.0[0] >= start && rgba.0[0] <= end)
+                || (rgba.0[1] >= start && rgba.0[1] <= end)
+                || (rgba.0[2] >= start && rgba.0[2] <= end)
+            {
+                rgba.0[0] = 255;
+                rgba.0[1] = 255;
+                rgba.0[2] = 255;
+            }
+            *pixel = rgba;
+        }
+        imgbuf.save("./data/scan_output.png")?;
         Ok(())
     }
 }

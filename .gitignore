@@ -8,3 +8,4 @@ Cargo.lock
 .vscode/
 data/scan_output.png
 data/3d-plot.svg
+data/histogram.png
