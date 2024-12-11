@@ -264,4 +264,81 @@ mod tests {
         imgbuf.save("./data/scan_output.png")?;
         Ok(())
     }
+    #[test]
+    fn image_rgb_3d_plot_gif() -> anyhow::Result<()> {
+        let _ = tracing_subscriber::fmt().with_line_number(true).try_init();
+        let img = ImageReader::open("./data/scan_raw.jpeg")?.decode()?;
+        let mut x_y_r = HashMap::new();
+        let mut x_y_g = HashMap::new();
+        let mut x_y_b = HashMap::new();
+        let (width, height) = img.dimensions();
+        for x in 0..width {
+            for y in 0..height {
+                let rgba = img.get_pixel(x, y);
+                x_y_r.insert(format!("{}-{}", x, y), rgba.0[0]);
+                x_y_g.insert(format!("{}-{}", x, y), rgba.0[1]);
+                x_y_b.insert(format!("{}-{}", x, y), rgba.0[2]);
+            }
+        }
+        let root = BitMapBackend::gif("./data/3d-plot.gif", (800, 600), 100)?.into_drawing_area();
+
+        for pitch in 0..157 {
+            root.fill(&WHITE)?;
+
+            let mut chart = ChartBuilder::on(&root)
+                .caption("2D Gaussian PDF", ("sans-serif", 20))
+                .build_cartesian_3d(0.0..255.0, 0.0..255.0, 0.0..255.0)?;
+            chart.with_projection(|mut p| {
+                p.pitch = 1.57 - (1.57 - pitch as f64 / 50.0).abs();
+                p.scale = 0.7;
+                p.into_matrix() // build the projection matrix
+            });
+
+            chart
+                .configure_axes()
+                .light_grid_style(BLACK.mix(0.15))
+                .max_light_lines(3)
+                .draw()?;
+
+            chart.draw_series(
+                SurfaceSeries::xoz(
+                    (0..255).map(|f| f as f64),
+                    (0..255).map(|f| f as f64),
+                    |a, b| {
+                        let z = x_y_r.get(&format!("{}-{}", a, b)).unwrap_or(&0);
+                        *z as f64
+                    },
+                )
+                .style(RED.mix(0.2).filled()),
+            )?;
+            chart.draw_series(
+                SurfaceSeries::xoz(
+                    (0..255).map(|f| f as f64),
+                    (0..255).map(|f| f as f64),
+                    |a, b| {
+                        let z = x_y_g.get(&format!("{}-{}", a, b)).unwrap_or(&0);
+                        *z as f64
+                    },
+                )
+                .style(GREEN.mix(0.2).filled()),
+            )?;
+            chart.draw_series(
+                SurfaceSeries::xoz(
+                    (0..255).map(|f| f as f64),
+                    (0..255).map(|f| f as f64),
+                    |a, b| {
+                        let z = x_y_b.get(&format!("{}-{}", a, b)).unwrap_or(&0);
+                        *z as f64
+                    },
+                )
+                .style(BLUE.mix(0.2).filled()),
+            )?;
+
+            root.present()?;
+        }
+
+        root.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
+        log::info!("Result has been saved");
+        Ok(())
+    }
 }
