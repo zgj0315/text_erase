@@ -1,7 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use image::{GenericImageView, ImageBuffer, ImageReader};
     use plotters::{
         chart::ChartBuilder,
@@ -12,6 +10,7 @@ mod tests {
         series::{Histogram, LineSeries, SurfaceSeries},
         style::{Color, BLACK, BLUE, GREEN, RED, WHITE},
     };
+    use std::collections::HashMap;
 
     #[test]
     fn copy_image_pixel_one_by_one() -> anyhow::Result<()> {
