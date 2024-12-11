@@ -4,4 +4,7 @@ name = "text_erase"
 version = "0.1.0"
 
 [dependencies]
+anyhow = "1.0"
 image = "0.25"
+log = "0.4"
+tracing-subscriber = "0.3"
