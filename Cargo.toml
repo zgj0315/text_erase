@@ -3,10 +3,6 @@ edition = "2021"
 name = "text_erase"
 version = "0.1.0"
 
-[[bin]]
-name = "erase_red"
-path = "src/bin/erase_red.rs"
-
 [dependencies]
 anyhow = "1.0"
 clap = {version = "4.5", features = ["derive"]}
